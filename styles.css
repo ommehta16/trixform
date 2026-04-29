@@ -1,0 +1,35 @@
+
+body {
+	display: flex;
+	flex-direction: row;
+	flex-wrap:0;
+	margin:0;
+
+	font-family: 'Inter', Arial, Helvetica, sans-serif;
+	overflow:hidden;
+}
+
+.left-panel {
+	background:#eee;
+	margin:0;
+	flex-grow:1;
+	max-width:50ch;
+	width:30%;
+	min-width:30ch;
+	box-sizing: border-box;
+	border-right:1px solid black;
+	padding:1rem;
+
+	height:100svh;
+	overflow: scroll;
+}
+
+.right-panel {
+	background:lightgreen;
+	margin:0;
+	padding:0;
+	/* max-width:40%; */
+	min-width:0;
+	flex-grow:1;
+	height:100svh;
+}
