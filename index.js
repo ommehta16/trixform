@@ -6,12 +6,7 @@ const resizer = new ResizeObserver(()=>{setTimeout(()=>{two.fit(); two.update();
 resizer.observe(parentElement);
 two.renderer.domElement.classList.add("twojs");
 
-const circle = two.makeCircle(-75,0,50);
-circle.fill = "orange";
-const rectangle = two.makeRectangle(75,0,100,100);
-rectangle.fill = "red";
-
-const group = two.makeGroup(circle,rectangle);
+const group = two.makeGroup();
 
 function centerElements() {
   const cx = two.width*0.5;
@@ -63,29 +58,48 @@ function getMousePos(e) {
   return rel;
 }
 
+function createNewPath() {
+  const path=two.makePath([]);
+  path.fill="transparent";
+  path.closed=false;
+  
+  polylines.push(path);
+  group.children.push(path);
+  return path;
+}
+
 /** @param {PointerEvent} e */
 function pointerdown(e) {
   const rel = getMousePos(e);
   if (!rel) return;
 
-  const path = polylines[polylines.length-1] ?? (() => {
-    const temp=two.makePath([]);
-    temp.fill="transparent";
-    temp.closed=false;
+  
+  let path = polylines[polylines.length-1] ?? createNewPath();
+  
+  if (hoverCircle.parentPath) {
+    if (hoverCircle.parentPath == path) {
+      path.closed=true;
+      path.fill="#FFBCAD";
+      path = createNewPath();
+      return;
+    }
     
-    polylines.push(temp);
-    group.children.push(temp);
-    return temp;
-  })();
+    // Hovercircle must be a different path to us, so we just snap to the node
+
+    rel.x = hoverCircle.position.x;
+    rel.y = hoverCircle.position.y;
+  }
   
   const anchor = new Two.Anchor(rel.x,rel.y, rel.x, rel.y, rel.x, rel.y);
   path.vertices.push(anchor);
 
   anchor.circle = two.makeCircle(rel.x,rel.y,2);
   anchor.circle.fill="black";
+  anchor.circle.circleType = "point";
+  anchor.path = path;
   group.children.push(anchor.circle);
-
-  two.update();
+  
+  findHover(e);
 }
 
 /**
@@ -96,41 +110,109 @@ function distSq(a, b) {
   return Math.pow(a.x-b.x,2) + Math.pow(a.y-b.y,2);
 }
 
-const hoverCircle = two.makeCircle(0,0,10);
+const hoverCircle = two.makeCircle(0,0,0);
+hoverCircle.fill = "#3da6fd6b";
+hoverCircle.stroke="transparent";
+hoverCircle.parentPath = null;
+hoverCircle.circleType = "point";
+
 group.children.push(hoverCircle);
 
 /** @param {PointerEvent} e */
-function pointermove(e) {
+function findHover(e) {
   const rel = getMousePos(e);
   if (!rel) return;
   if (!polylines.length) return;
-
   let closestCircle = null;
   let closestDist = Infinity;
-
-  for (const anchor of polylines[polylines.length-1].vertices) {
-    const dist = distSq(anchor, rel);
-    if (dist >= closestDist) continue;
-    
-    closestDist=dist;
-    closestCircle = anchor;
+  
+  for (const path of polylines) {
+    for (const anchor of path.vertices) {
+      const dist = distSq(anchor, rel);
+      if (dist > closestDist) continue;
+      
+      closestDist=dist;
+      closestCircle = anchor;
+    }
+  }
+  
+  if (closestDist > 20*20) {
+    hoverCircle.radius = 0;
+    hoverCircle.parentPath = null;
+  }
+  else {
+    hoverCircle.radius=10;
+    hoverCircle.position.x = closestCircle.x;
+    hoverCircle.position.y = closestCircle.y;
+    hoverCircle.parentPath = closestCircle.path;
   }
 
-  console.log(closestCircle, hoverCircle);
-
-  hoverCircle.position.set(closestCircle.x, closestCircle.y);
-  
-  hoverCircle.radius = 10;
-  hoverCircle.fill = "#3da6fd6b";
-  hoverCircle.stroke="transparent";
-
-  two.update();
 }
 
-addEventListener("pointerdown",pointerdown);
-addEventListener("pointermove",pointermove);
+/** @param {KeyboardEvent} e */
+function onEnter(e) {
+  if (e.key != "Enter") return;
+  if (!polylines.length || polylines[polylines.length-1].vertices.length) createNewPath();
+} 
 
-document.querySelector("#start").addEventListener("click",()=>{
-  two.play();
-});
-two.update();
+addEventListener("pointerdown",pointerdown);
+addEventListener("pointermove",findHover);
+addEventListener("keypress", onEnter)
+
+two.play();
+
+const matrixContainer = document.querySelector("table.matrix-container");
+const applyButton = document.querySelector("button");
+
+/** @param {number} element */
+function doError(element) {
+
+}
+
+/**
+ * @returns {[[number,number],[number,number]] | void}
+ */
+function getMatrix() {
+  const inputs = matrixContainer.querySelectorAll("input");
+  if (inputs.length != 4) return;
+
+  const flat = Array.from(inputs).map(el=>Number.parseFloat(el.value));
+
+  let isGood=true;
+  console.log(flat);
+  flat.forEach((number,i) => {
+      if (!Number.isNaN(number)) return;
+      doError(i);
+      isGood=false;
+  });
+  if (!isGood) return;
+  console.log("HAHAH");
+
+  return [
+    [flat[0], flat[1]],
+    [flat[2], flat[3]]
+  ];
+}
+
+/**
+ * @param {[[number,number],[number,number]]?} matrix
+ */
+function applyTransform(matrix, twoEl) {
+  if (!matrix) return;
+
+  if (twoEl.children) {
+    twoEl.children.forEach(child => applyTransform(matrix,child));
+  }
+  if (twoEl.vertices) {
+    twoEl.vertices.forEach(v => {
+      const temp = {
+        x: matrix[0][0] * v.x + matrix[0][1] * v.y,
+        y: matrix[1][0] * v.x + matrix[1][1] * v.y 
+      };
+      v.x = temp.x;
+      v.y = temp.y;
+    });
+  }
+}
+
+applyButton.addEventListener("click", () => applyTransform(getMatrix(),group))

@@ -4,18 +4,20 @@ body {
 	flex-direction: row;
 	flex-wrap:0;
 	margin:0;
-
-	font-family: 'Inter', Arial, Helvetica, sans-serif;
 	overflow:hidden;
+}
+
+:root, input, button {
+	font-family: 'Inter', Arial, Helvetica, sans-serif;
 }
 
 .left-panel {
 	background:#eee;
 	margin:0;
 	flex-grow:1;
-	max-width:50ch;
+	max-width:30ch;
 	width:30%;
-	min-width:30ch;
+	min-width:20ch;
 	box-sizing: border-box;
 	border-right:1px solid black;
 	padding:1rem;
@@ -32,4 +34,53 @@ body {
 	min-width:0;
 	flex-grow:1;
 	height:100svh;
+}
+
+table {
+	max-width:100%;
+}
+
+h2 {
+	margin-bottom:0;
+	font-weight:400;
+}
+
+input {
+	/* width:100%; */
+	box-sizing: border-box;
+	aspect-ratio: 1;
+	width:100%;
+	border:unset;
+	font-size:1.5rem;
+
+	padding:1rem;
+	border:1px solid gray;
+	box-shadow: #0001 0px 0px 0.5rem inset;
+	border-radius:0.5rem;
+}
+
+button {
+	box-sizing: border-box;
+	width: calc(100% - 0.5rem);
+	margin-inline: 0.25rem;
+	font-size: 1.25rem;
+	padding-block:1rem;
+	text-align:center;
+	position:relative;
+	top:0;
+
+	border: 1px solid gray;
+	border-radius:0.5rem;
+	box-shadow: #0001 0px 0px 0.5rem inset;
+	background:#eee;
+	transition: background 0.2s, top 0.2s;
+
+	&:hover {
+		background:#ddd;
+		cursor:pointer;
+	}
+
+	&:active {
+		top:0.25rem;
+	}
 }
