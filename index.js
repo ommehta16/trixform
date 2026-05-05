@@ -166,7 +166,12 @@ const applyButton = document.querySelector("button");
 
 /** @param {number} element */
 function doError(element) {
+  const el = matrixContainer.querySelectorAll("input")[element];
+  console.log(el);
 
+  el.classList.remove("error");
+  el.classList.add("error");
+  setTimeout(() => el.classList.remove("error"), 2000);
 }
 
 /**
@@ -203,7 +208,7 @@ function applyTransform(matrix, twoEl) {
   if (twoEl.children) {
     twoEl.children.forEach(child => applyTransform(matrix,child));
   }
-  if (twoEl.vertices) {
+  if (twoEl.vertices && !("circleType" in twoEl)) {
     twoEl.vertices.forEach(v => {
       const temp = {
         x: matrix[0][0] * v.x + matrix[0][1] * v.y,
@@ -212,7 +217,26 @@ function applyTransform(matrix, twoEl) {
       v.x = temp.x;
       v.y = temp.y;
     });
+    // .vertices doesn't set position for a circle
+  }
+  if ("circleType" in twoEl) {
+    // This means its a circle!
+    const v = {x: twoEl.position.x, y: twoEl.position.y};
+    twoEl.position.x = matrix[0][0] * v.x + matrix[0][1] * v.y;
+    twoEl.position.y = matrix[1][0] * v.x + matrix[1][1] * v.y;
   }
 }
 
 applyButton.addEventListener("click", () => applyTransform(getMatrix(),group))
+
+addEventListener("keydown", e=> {
+  if (e.key != "Enter") return;
+  applyButton.classList.add("virtualpress");
+});
+
+addEventListener("keyup", e=>{
+  if (e.key != "Enter") return;
+  
+  applyButton.classList.remove("virtualpress")
+  applyTransform(getMatrix(), group);
+})

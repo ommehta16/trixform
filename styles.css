@@ -57,7 +57,27 @@ input {
 	border:1px solid gray;
 	box-shadow: #0001 0px 0px 0.5rem inset;
 	border-radius:0.5rem;
+	text-align: center;
+
+	transition: border 500ms, padding 500ms;
+
+	position:relative;
 }
+
+@keyframes shake {
+	0% { left: 0%; }
+	25% { left: -10%; }
+	50% { left: 0%; }
+	75% { left: 10%; }
+	100% { left: 0%; }
+}
+
+input.error {
+	border: calc(1px + 0.25rem) solid rgb(211, 93, 93);
+	padding: 0.75rem;
+	animation: shake 0.2s ease 0s 1 forwards;
+}
+
 
 button {
 	box-sizing: border-box;
@@ -74,13 +94,13 @@ button {
 	box-shadow: #0001 0px 0px 0.5rem inset;
 	background:#eee;
 	transition: background 0.2s, top 0.2s;
+}
 
-	&:hover {
-		background:#ddd;
-		cursor:pointer;
-	}
+button:hover {
+	background:#ddd;
+	cursor:pointer;
+}
 
-	&:active {
-		top:0.25rem;
-	}
+button:active, button.virtualpress {
+	top:0.25rem;
 }
