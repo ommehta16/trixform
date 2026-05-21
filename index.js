@@ -200,34 +200,123 @@ function getMatrix() {
 }
 
 /**
- * @param {[[number,number],[number,number]]?} matrix
+ * @typedef {{x:number,y:number}} Point
  */
-function applyTransform(matrix, twoEl) {
-  if (!matrix) return;
+
+function getAllVertices(twoEl) {
+  /** @type {Point[]} */
+  const vertexList = [];
 
   if (twoEl.children) {
-    twoEl.children.forEach(child => applyTransform(matrix,child));
+    twoEl.children.forEach(child => vertexList.push(...getAllVertices(child)));
   }
-  if (twoEl.vertices && !("circleType" in twoEl)) {
-    twoEl.vertices.forEach(v => {
-      const temp = {
-        x: matrix[0][0] * v.x + matrix[0][1] * v.y,
-        y: matrix[1][0] * v.x + matrix[1][1] * v.y 
-      };
-      v.x = temp.x;
-      v.y = temp.y;
-    });
-    // .vertices doesn't set position for a circle
+
+  if (twoEl.vertices && !("circleType" in twoEl)) { // It's a normal path
+    twoEl.vertices.forEach(v => vertexList.push(v));
   }
-  if ("circleType" in twoEl) {
-    // This means its a circle!
-    const v = {x: twoEl.position.x, y: twoEl.position.y};
-    twoEl.position.x = matrix[0][0] * v.x + matrix[0][1] * v.y;
-    twoEl.position.y = matrix[1][0] * v.x + matrix[1][1] * v.y;
+  
+  if ("circleType" in twoEl) { // It's a circle
+    vertexList.push(twoEl.position);
+  }
+
+  return vertexList;
+}
+
+/** @param {Point[]} vertexList */
+function copyVertices(vertexList) {
+  return vertexList.map(el => ({x:el.x, y:el.y}));
+}
+
+let animationStart = 0;
+
+/** @type {((t:number)=>null)?} */
+let currentAnimation = null;
+
+/**
+ * @param {[[number,number],[number,number]]?} matrix
+ */
+function doAnimation(matrix) {
+  if (!matrix) return;
+
+  currentAnimation && currentAnimation(1);
+  currentAnimation=null;
+
+  const vertices = getAllVertices(group);
+  const initialPos = copyVertices(vertices);
+
+  /** @param {number} t Animation completion percentage: **0 < `t` < 1** */
+  function calculateAnimationPositions(t) {
+    const transformMat = merp(matrix, t);
+    applyTransform(transformMat,vertices,initialPos);
+  }
+
+  currentAnimation = calculateAnimationPositions;
+  animationStart = Date.now();
+}
+
+/** @type {number} How long any animation should last, in ms */
+const ANIMATION_DURATION = 250;
+
+function onUpdate() {
+  if (!currentAnimation) return;
+  const time = Date.now();
+  const elapsed = time-animationStart;
+  if (elapsed >= ANIMATION_DURATION) {
+    currentAnimation(1);
+    currentAnimation=null;
+    return;
+  }
+  currentAnimation(elapsed / ANIMATION_DURATION);
+}
+
+two.bind('update',onUpdate);
+
+/** Interpolates between `I_2` and `matrix` by `t`
+ *  - `merp(matrix, 0)` = I_2
+ *  - `merp(matrix, 1)` = matrix
+ * @param {[[number,number],[number,number]]?} matrix Matrix to interpolate to
+ * @param {number} t Value from 0-1, corresponds to how much of `matrix` is in the output
+ */ 
+function merp(matrix, t) {
+  return [
+    [matrix[0][0]*t + 1*(1-t),matrix[0][1]*t],
+    [matrix[1][0]*t,matrix[1][1]*t + 1*(1-t)]
+  ];
+}
+
+/**
+ * 
+ * @param {number} x1 First control point x (0 <= x <= 1)
+ * @param {number} y1 First control point y
+ * @param {number} x2 Second control point x (0<=x<=1)
+ * @param {number} y2 Second control point y
+ * @returns {(t:number)=>number}
+ */
+function cubicBezier(x1, y1, x2, y2) {
+  if (x1 < 0 || x1>1) throw new RangeError("`x1` is not within permissible bounds");
+  if (x2 < 0 || x2>1) throw new RangeError("`x1` is not within permissible bounds");
+
+  return (t) => {
+    return 0;
   }
 }
 
-applyButton.addEventListener("click", () => applyTransform(getMatrix(),group))
+/**
+ * @param {[[number,number],[number,number]]} matrix
+ * @param {Point[]} vertices The point list to put results into
+ * @param {Point[]?} originalVertices The point list to take vertices from
+ */
+function applyTransform(matrix, vertices, originalVertices) {
+  if (!originalVertices) originalVertices=vertices;
+  if (vertices.length != originalVertices.length) throw new RangeError("Mismatching amount of vertices in input and output lists");
+  vertices.forEach((v,i) => {
+    const temp = {x: originalVertices[i].x, y: originalVertices[i].y};
+    v.x = matrix[0][0] * temp.x + matrix[0][1] * temp.y;
+    v.y = matrix[1][0] * temp.x + matrix[1][1] * temp.y;
+  });
+}
+
+applyButton.addEventListener("click", () => doAnimation(getMatrix()))
 
 addEventListener("keydown", e=> {
   if (e.key != "Enter") return;
@@ -238,5 +327,5 @@ addEventListener("keyup", e=>{
   if (e.key != "Enter") return;
   
   applyButton.classList.remove("virtualpress")
-  applyTransform(getMatrix(), group);
+  doAnimation(getMatrix());
 })
